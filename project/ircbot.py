@@ -2,47 +2,18 @@
 # -*- coding: utf-8 -*-
 #
 
-import state
-#import logging  # famework pro ukladani logu, je to prej drsny
+import plugins
+import plugins.state
 
-# recived words
-WORDSCOUNT = 0
+# rename state for compatibility
+state = plugins.state
 
-def cmd_shutdown(msg):
-    raise SystemExit
-
-def cmd_help(msg):
-    return state.done("Help messages")
-
-def cmd_wordscount(msg):
-    global WORDSCOUNT
-    
-    return state.done("Actual word count is: %d words" % WORDSCOUNT)
-
-    
-def filter_wordscount(msg):
-    global WORDSCOUNT
-    
-    WORDSCOUNT += len(msg.split())
-    
-    return state.done(msg)
-
-    
 class IrcBot(object):
-    # nedavejte do teto tridy nic jineho, nez jsme tu uvedli
-    # implementace prikazu i filtru budou mimo tridu, stejne tak
-    # jako jejich pripadne globalni promenne
-    COMMANDS = {
-                "SHUTDOWN":cmd_shutdown,
-                "HELP":cmd_help,
-                "word-count":cmd_wordscount
-                }
-                
-    FILTERS = [filter_wordscount]
 
     def __init__(self, interface):
         self._if = interface
-
+    COMMANDS = plugins.COMMANDS
+    FILTERS = plugins.HOOKS
     def parse(self, msg):
         """
         Parse a message, return relevant output.
@@ -63,22 +34,30 @@ class IrcBot(object):
             stat = self.COMMANDS[command](args)
             if state.is_done(stat):
                 return stat.value
+            elif state.is_next(stat):
+                print(stat.value)
+                return None
             else:
                 return None
-            
+
         for func in self.FILTERS:
             stat = func(msg)
-            
+
             if state.is_done(stat):
                 return stat.value
             elif state.is_replace(stat):
                 msg = stat.value
-        
+
         return msg
-        
+
     def run(self):
         while True:
-            msg = self._if.read()
+            try:
+                msg = self._if.read()
+            except EOFError, KeyboardInterrupt:
+                print("Shutting down..")
+                exit(0)
+
             msg = self.parse(msg)
             if msg:
                 self._if.write(msg)
@@ -86,7 +65,7 @@ class IrcBot(object):
 
 class BotInterface(object):
 
-    
+
     def __init__(self):
         pass
 
@@ -97,7 +76,8 @@ class BotInterface(object):
         @return: read data
         @rtype: str
         """
-        return raw_input()
+
+        return raw_input("> ")
 
     def write(self, arg):
         """
