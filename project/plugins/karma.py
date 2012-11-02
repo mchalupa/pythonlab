@@ -15,7 +15,10 @@ def cmd_karma(msg):
 
     global KARMA
     msg = msg.strip()
-
+    
+    if msg == '':
+        return state.next('No name given')
+    
     if KARMA.has_key(msg):
         return state.done(msg + "'s karma is " + str(KARMA[msg]))
     else:

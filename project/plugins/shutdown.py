@@ -3,6 +3,7 @@
 #
 
 import state
+from ping import cmd_ping
 
 def cmd_shutdown(msg):
     """
@@ -10,7 +11,7 @@ def cmd_shutdown(msg):
 
     @param msg  unused, only for consistence with other commands
     """
-
+    cmd_ping('ping=off') # kill ping thread
     raise SystemExit
 
 if __name__ == "__main__":

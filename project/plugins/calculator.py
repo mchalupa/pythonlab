@@ -10,7 +10,7 @@ def cmd_calc(inp):
     @param inp      input string
     """
 
-    allowed_chars = " 0123456789+-*/()"
+    allowed_chars = " 0123456789.+-*/()"
     par = 0;
     for i in range(0, len(inp)):
         if inp[i] not in allowed_chars:
@@ -21,7 +21,7 @@ def cmd_calc(inp):
         except SyntaxError:
             return state.next("Syntax error")
 
-    return state.done(out)
+    return state.done(str(out))
 
 
 def main():

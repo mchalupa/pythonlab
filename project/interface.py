@@ -38,7 +38,6 @@ class IRCBotShellInterface(IRCBotInterface):
     def close(self):
         pass
 
-
 class IRCBotTelnetInterface(IRCBotInterface):
     def __init__(self, address = None, port = 8080):
         self._timeout = 60 * 10
@@ -50,6 +49,14 @@ class IRCBotTelnetInterface(IRCBotInterface):
         self._port = port
 
     def client(self):
+        if not self._socket:
+            # wait for incoming connection
+            conn, addr = self._listen.accept()
+        
+            # prepare python File object
+            self._sfile = conn.makefile()
+            self._socket = conn
+
         return self._sfile
 
     def disconnected(self):
@@ -57,20 +64,49 @@ class IRCBotTelnetInterface(IRCBotInterface):
         self._sfile = None
 
     def read(self):
-        pass
+        while True:
+            try:
+                data = self.client().readline()
+                if data == "":
+                    self.disconnected()
+                else:
+                    return data.rstrip()
+            except (socket.error, socket.timeout, IOError) as ex:
+                self.disconnected()
 
     def write(self, msg):
-        pass
+        self._sfile.write(msg+"\n")
+        self._sfile.flush()
 
     def open(self):
-        pass
+        """Make a socket connection."""
+        for (family, socktype, proto, canonname, sockaddr) in socket.getaddrinfo(self._addr, self._port):
+            try:
+                if socktype != socket.SOCK_STREAM:
+                    continue
+                if family != socket.AF_INET:
+                    continue
+                sock = socket.socket(family, socktype, proto)
+                sock.settimeout(self._timeout)
+
+                # listen on the selected address
+                sock.bind(sockaddr)
+                sock.listen(0)
+                self._listen = sock
+                
+            except (socket.error, socket.timeout, IOError) as ex:
+                print str(ex)
 
         if self._listen == None:
             raise Exception("No valid address found")
 
     def close(self):
-        pass
-
+        if self._socket:
+            self._socket.close()
+            
+        if self._listen:
+            self._listen.close()
+ 
 if __name__ == "__main__":
     x = IRCBotTelnetInterface("::1", 8082)
     x.open()

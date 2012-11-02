@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 
+import sys
+import interface
 import plugins
 import plugins.state
 
@@ -12,8 +14,10 @@ class IrcBot(object):
 
     def __init__(self, interface):
         self._if = interface
+        
     COMMANDS = plugins.COMMANDS
     FILTERS = plugins.HOOKS
+    
     def parse(self, msg):
         """
         Parse a message, return relevant output.
@@ -52,15 +56,11 @@ class IrcBot(object):
 
     def run(self):
         while True:
-            try:
-                msg = self._if.read()
-            except EOFError, KeyboardInterrupt:
-                print("Shutting down..")
-                exit(0)
-
+            msg = self._if.read()
             msg = self.parse(msg)
             if msg:
                 self._if.write(msg)
+                #print(msg)
 
 
 class BotInterface(object):
@@ -89,10 +89,31 @@ class BotInterface(object):
         print(arg)
 
 
-
-
-
 if __name__ == "__main__":
-    intf = BotInterface()
+    
+    intf = interface.IRCBotTelnetInterface(port = 8082)
+    
+    print("Creating connection..")
+    
+    trys = 0
+    intf.open()
+    
+    print("Done..")
+    
     bot = IrcBot(intf)
-    bot.run()
+    ping_thread = plugins.PingThread(intf)
+    ping_thread.start()
+    
+    print("Starting bot..\n")
+    
+    try:
+        bot.run()
+    except (KeyboardInterrupt, EOFError, SystemExit):
+        plugins.cmd_ping('ping=off')
+        print "Shutting down.."
+        
+        ping_thread.join()
+        intf.close()
+        
+        print("Env cleared")        
+        sys.exit(0)
